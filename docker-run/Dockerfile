@@ -1,0 +1,6 @@
+FROM ubuntu:14.04
+
+RUN mkdir /PROJECT
+WORKDIR /PROJECT
+
+CMD ./hello
