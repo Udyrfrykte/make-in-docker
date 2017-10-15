@@ -1,0 +1,244 @@
+#!/bin/bash
+set -e
+
+##########
+# USAGES #
+##########
+
+function usage {
+cat <<EOF
+Usage: $(basename $0) COMMAND
+
+Make and run projects (typically system dependent ones, e.g. C/C++ ones) in Docker containers
+
+Options:
+  --help             print usage
+  --directory <dir>  project directory (default: ./)
+  --prefix <prefix>  prefix value (default: content of the 'mid-prefix' file in
+                     the project directory or default if it doesn't exist)
+
+Commands:
+  build                build the make and run images
+  export               export the make image include directories (for IDEs)
+  make                 make the project in the make image
+  run                  run the project in the run image
+
+Run '$(basename $0) COMMAND --help' for more information on a command.
+EOF
+}
+
+
+function usage_build {
+cat <<EOF
+Usage: $(basename $0) build [OPTIONS]
+
+Build the Docker images that will be used by the 'make' and 'run' commands
+
+Options:
+  --help  print usage
+EOF
+}
+
+
+function usage_export {
+cat <<EOF
+Usage: $(basename $0) export [OPTIONS]
+
+Export the make image's /usr/include and /usr/local/include directories to <prefix>-make-root
+
+Options:
+  --help  print usage
+EOF
+}
+
+
+function usage_make {
+cat <<EOF
+Usage: $(basename $0) make [OPTIONS] [COMMAND]
+
+Run a container based on the make image
+
+Options:
+  --help                     print usage
+  --entrypoint <entrypoint>  overrides the make image entrypoint
+  --mountpoint <mountpoint>  mountpoint for the project directory in the
+                             container (default: /PROJECT)
+
+COMMAND: the command that will be passed to 'docker run'
+EOF
+}
+
+
+function usage_run {
+cat <<EOF
+Usage: $(basename $0) run [OPTIONS] [COMMAND]
+
+Run a container based on the run image
+
+Options:
+  --help                     print usage
+  --entrypoint <entrypoint>  overrides the run image entrypoint
+  --mountpoint <mountpoint>  mountpoint for the project directory in the
+                             container (default: /PROJECT)
+
+COMMAND: the command that will be passed to 'docker run'
+EOF
+}
+
+####################
+# HELPER FUNCTIONS #
+####################
+
+function docker_run {
+    mid_command="$1"
+    shift
+
+    mountpoint='/PROJECT'
+    while [ -n "$1" ]; do
+        case "$1" in
+            --help)
+                usage_$mid_command
+                exit 0
+                ;;
+            --entrypoint)
+                shift
+                if [ -n "$1" ]; then
+                    entrypoint="$1"
+                fi
+                ;;
+            --mountpoint)
+                shift
+                if [ -n "$1" ]; then
+                    mountpoint="$1"
+                fi
+                ;;
+            *)
+                break
+                ;;
+        esac
+        shift
+    done
+
+    if [ -t 1 ]; then
+        interactive="-it"
+    fi
+
+    if [ -n "$entrypoint" ]; then
+        docker run $interactive --rm -v "${absolute_directory}:${mountpoint}" --entrypoint "$entrypoint" "make-in-docker/${prefix}:${mid_command}" "$@"
+    else
+        docker run $interactive --rm -v "${absolute_directory}:${mountpoint}" "make-in-docker/${prefix}:${mid_command}" "$@"
+    fi
+}
+
+###############
+# SUBCOMMANDS #
+###############
+
+function build {
+    while [ -n "$1" ]; do
+        case "$1" in
+            --help)
+                usage_build
+                exit 0
+                ;;
+            *)
+                usage_build
+                exit 1
+                ;;
+        esac
+        shift
+    done
+
+    if [ -d "${absolute_directory}/${prefix}-make" ]; then
+        docker build --rm -t make-in-docker/${prefix}:make ${absolute_directory}/${prefix}-make
+    else
+        echo "no make image directory (should be ${absolute_directory}/${prefix}-make)"
+    fi
+
+    if [ -d "${absolute_directory}/${prefix}-run" ]; then
+        docker build --rm -t make-in-docker/${prefix}:run ${absolute_directory}/${prefix}-run
+    else
+        echo "no run image directory (should be ${absolute_directory}/${prefix}-run)"
+    fi
+}
+
+
+function export {
+    while [ -n "$1" ]; do
+        case "$1" in
+            --help)
+                usage_export
+                exit 0
+                ;;
+            *)
+                usage_export
+                exit 1
+                ;;
+        esac
+        shift
+    done
+
+    rm -rf ${absolute_directory}/${prefix}-make-root
+    mkdir ${absolute_directory}/${prefix}-make-root
+    docker run --rm make-in-docker/${prefix}:make tar -C / -c usr/include | tar -x -C ${absolute_directory}/${prefix}-make-root
+    docker run --rm make-in-docker/${prefix}:make tar -C / -c usr/local/include | tar -x -C ${absolute_directory}/${prefix}-make-root
+}
+
+
+function make {
+    docker_run make "$@"
+}
+
+
+function run {
+    docker_run run "$@"
+}
+
+###############
+# MAIN SCRIPT #
+###############
+
+directory='.'
+while [ -n "$1" -a -z "$mid_command" ]; do
+    case "$1" in
+        --help)
+            usage
+            exit 0
+            ;;
+        --directory)
+            shift
+            if [ -n "$1" ]; then
+                directory="$1"
+            fi
+            ;;
+        --prefix)
+            shift
+            if [ -n "$1" ]; then
+                prefix="$1"
+            fi
+            ;;
+        build|export|make|run)
+            mid_command="$1"
+            ;;
+    esac
+    shift
+done
+
+if [ -z "$mid_command" ]; then
+    echo "Error: $(basename $0) requires a command"
+    echo
+    usage
+    exit 1
+fi
+
+absolute_directory="$(cd "$directory" && pwd;)"
+
+if [ -f "${absolute_directory}/mid-prefix" ]; then
+    prefix="${prefix:-$(cat "${absolute_directory}/mid-prefix")}"
+fi
+prefix="${prefix:-default}"
+
+# prefix sanitization
+prefix="$(echo "${prefix}" | head -n 1 | sed 's/[^-_.0-9A-Za-z]//g')"
+
+$mid_command "$@"
