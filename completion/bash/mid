@@ -1,0 +1,120 @@
+
+_mid_run()
+{
+  local cur=${COMP_WORDS[COMP_CWORD]}
+  local prev_args=("${COMP_WORDS[@]:1:COMP_CWORD-1}")
+  local state='zero'
+  local index=0
+
+  for arg in "${prev_args[@]}"; do
+    index=$(( index + 1 ))
+    if [ "$state" == 'zero' ]; then
+      case "$arg" in
+        --help)
+          return
+          ;;
+        --entrypoint)
+          state='entrypoint'
+          ;;
+        --mountpoint)
+          state='mountpoint'
+          ;;
+        *)
+          return
+          ;;
+      esac
+    else
+      state='zero'
+      continue
+    fi
+  done
+
+  case "$state" in
+    zero)
+      if [ -z "$cur" ]; then
+        COMPREPLY=( $(compgen -W "--help --entrypoint --mountpoint <ARGUMENTS>" -- $cur) )
+      elif [ "${cur:0:1}" == '-' ]; then
+        COMPREPLY=( $(compgen -W "--help --entrypoint --mountpoint" -- $cur) )
+      fi
+      ;;
+    entrypoint)
+      ;;
+    mountpoint)
+      ;;
+    *)
+      ;;
+  esac
+
+  return
+}
+
+_mid_norun()
+{
+  COMPREPLY=( $(compgen -W "  --help" -- $cur) )
+  return
+}
+
+_mid()
+{
+  COMPREPLY=()
+
+  local cur=${COMP_WORDS[COMP_CWORD]}
+  local prev_args=("${COMP_WORDS[@]:1:COMP_CWORD-1}")
+  local state='zero'
+  local index=0
+
+  for arg in "${prev_args[@]}"; do
+    index=$(( index + 1 ))
+    if [ "$state" == 'zero' ]; then
+      case "$arg" in
+        --help)
+          return
+          ;;
+        --directory)
+          state='directory'
+          ;;
+        --prefix)
+          state='prefix'
+          ;;
+        build|export)
+          COMP_WORDS=("${COMP_WORDS[@]:index}")
+          COMP_CWORD=$(( COMP_CWORD - index ))
+          _mid_norun
+          return
+          ;;
+        make|run)
+          COMP_WORDS=("${COMP_WORDS[@]:index}")
+          COMP_CWORD=$(( COMP_CWORD - index ))
+          _mid_run
+          return
+          ;;
+        *)
+          return
+          ;;
+      esac
+    else
+      state='zero'
+      continue
+    fi
+  done
+
+  case "$state" in
+    zero)
+      if [ "${cur:0:1}" == '-' ]; then
+        COMPREPLY=( $(compgen -W "--help --directory --prefix" -- $cur) )
+      else
+        COMPREPLY=( $(compgen -W "build export make run" -- $cur) )
+      fi
+      ;;
+    directory)
+      COMPREPLY=( $(compgen -d -- $cur) )
+      ;;
+    prefix)
+      ;;
+    *)
+      ;;
+  esac
+
+  return
+}
+complete -F _mid mid
