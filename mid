@@ -12,16 +12,16 @@ Usage: $(basename $0) COMMAND
 Make and run projects (typically system dependent ones, e.g. C/C++ ones) in Docker containers
 
 Options:
-  --help             print usage
-  --directory <dir>  project directory (default: ./)
-  --prefix <prefix>  prefix value (default: content of the 'mid-prefix' file in
-                     the project directory or default if it doesn't exist)
+  --help              print usage
+  --directory <dir>   project directory (default: ./)
+  --prefix <prefix>   prefix value (default: content of the 'mid-prefix' file in
+                      the project directory or default if it doesn't exist)
 
 Commands:
-  build                build the make and run images
-  export               export the make image include directories (for IDEs)
-  make                 make the project in the make image
-  run                  run the project in the run image
+  build               build the make and run images
+  export              export the make image include directories (for IDEs)
+  make                make the project in the make image
+  run                 run the project in the run image
 
 Run '$(basename $0) COMMAND --help' for more information on a command.
 EOF
@@ -59,10 +59,10 @@ Usage: $(basename $0) make [OPTIONS] [COMMAND]
 Run a container based on the make image
 
 Options:
-  --help                     print usage
-  --entrypoint <entrypoint>  overrides the make image entrypoint
-  --mountpoint <mountpoint>  mountpoint for the project directory in the
-                             container (default: /PROJECT)
+  --help                      print usage
+  --entrypoint <entrypoint>   overrides the make image entrypoint
+  --mountpoint <mountpoint>   mountpoint for the project directory in the
+                              container (default: /PROJECT)
 
 COMMAND: the command that will be passed to 'docker run'
 EOF
@@ -76,10 +76,10 @@ Usage: $(basename $0) run [OPTIONS] [COMMAND]
 Run a container based on the run image
 
 Options:
-  --help                     print usage
-  --entrypoint <entrypoint>  overrides the run image entrypoint
-  --mountpoint <mountpoint>  mountpoint for the project directory in the
-                             container (default: /PROJECT)
+  --help                      print usage
+  --entrypoint <entrypoint>   overrides the run image entrypoint
+  --mountpoint <mountpoint>   mountpoint for the project directory in the
+                              container (default: /PROJECT)
 
 COMMAND: the command that will be passed to 'docker run'
 EOF
@@ -134,7 +134,7 @@ function docker_run {
 # SUBCOMMANDS #
 ###############
 
-function build {
+function mid_build {
     while [ -n "$1" ]; do
         case "$1" in
             --help)
@@ -163,7 +163,7 @@ function build {
 }
 
 
-function export {
+function mid_export {
     while [ -n "$1" ]; do
         case "$1" in
             --help)
@@ -185,12 +185,12 @@ function export {
 }
 
 
-function make {
+function mid_make {
     docker_run make "$@"
 }
 
 
-function run {
+function mid_run {
     docker_run run "$@"
 }
 
@@ -241,4 +241,4 @@ prefix="${prefix:-default}"
 # prefix sanitization
 prefix="$(echo "${prefix}" | head -n 1 | sed 's/[^-_.0-9A-Za-z]//g')"
 
-$mid_command "$@"
+mid_${mid_command} "$@"

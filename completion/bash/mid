@@ -1,3 +1,4 @@
+#! /bin/bash
 
 _mid_run()
 {
@@ -107,7 +108,15 @@ _mid()
       fi
       ;;
     directory)
-      COMPREPLY=( $(compgen -d -- $cur) )
+      # check size and add same with . if exactly one if more than 1 possibility,
+      # check for a partial completion, if none is found, only output basenames.
+      # For now returning basenames causes issues (when there is a shared prefix among
+      # all completion proposal - the basenames in our case - the whole argument is
+      # replaced with it...)
+      COMPREPLY=( $(compgen -S / -d -- $cur) )
+      if [ "${#COMPREPLY[@]}" -eq 1 ]; then
+        COMPREPLY+=( "${COMPREPLY[0]}." )
+      fi
       ;;
     prefix)
       ;;
