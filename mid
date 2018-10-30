@@ -14,8 +14,8 @@ Make and run projects (typically system dependent ones, e.g. C/C++ ones) in Dock
 Options:
   --help              print usage
   --directory <dir>   project directory (default: ./)
-  --prefix <prefix>   prefix value (default: content of the 'mid-prefix' file in
-                      the project directory or default if it doesn't exist)
+  --prefix <prefix>   prefix value (default: content of the '.mid-prefix' file
+                      in the project directory or default if it doesn't exist)
 
 Commands:
   build               build the make and run images
@@ -56,13 +56,14 @@ function usage_make {
 cat <<EOF
 Usage: $(basename $0) make [OPTIONS] [COMMAND]
 
-Run a container based on the make image
+Run a container based on the make image, the project directory will be bind
+mounted to the same absolute path and used as the working directory, the
+/CACHE directory will be shared among all containers with the same prefix.
+
 
 Options:
   --help                      print usage
   --entrypoint <entrypoint>   overrides the make image entrypoint
-  --mountpoint <mountpoint>   mountpoint for the project directory in the
-                              container (default: /PROJECT)
 
 COMMAND: the command that will be passed to 'docker run'
 EOF
@@ -73,13 +74,13 @@ function usage_run {
 cat <<EOF
 Usage: $(basename $0) run [OPTIONS] [COMMAND]
 
-Run a container based on the run image
+Run a container based on the run image, the project directory will be bind
+mounted to the same absolute path and used as the working directory, the
+/CACHE directory will be shared among all containers with the same prefix.
 
 Options:
   --help                      print usage
   --entrypoint <entrypoint>   overrides the run image entrypoint
-  --mountpoint <mountpoint>   mountpoint for the project directory in the
-                              container (default: /PROJECT)
 
 COMMAND: the command that will be passed to 'docker run'
 EOF
@@ -93,7 +94,6 @@ function docker_run {
     mid_command="$1"
     shift
 
-    mountpoint='/PROJECT'
     while [ -n "$1" ]; do
         case "$1" in
             --help)
@@ -104,12 +104,6 @@ function docker_run {
                 shift
                 if [ -n "$1" ]; then
                     entrypoint="$1"
-                fi
-                ;;
-            --mountpoint)
-                shift
-                if [ -n "$1" ]; then
-                    mountpoint="$1"
                 fi
                 ;;
             *)
@@ -124,9 +118,9 @@ function docker_run {
     fi
 
     if [ -n "$entrypoint" ]; then
-        docker run $interactive --rm -v "${absolute_directory}:${mountpoint}" --entrypoint "$entrypoint" "make-in-docker/${prefix}:${mid_command}" "$@"
+        docker run $interactive --rm -v "mid_cache_${prefix}:/CACHE" -v "${absolute_directory}:${absolute_directory}" -w "${absolute_directory}" --entrypoint "$entrypoint" "make-in-docker/${prefix}:${mid_command}" "$@"
     else
-        docker run $interactive --rm -v "${absolute_directory}:${mountpoint}" "make-in-docker/${prefix}:${mid_command}" "$@"
+        docker run $interactive --rm -v "mid_cache_${prefix}:/CACHE" -v "${absolute_directory}:${absolute_directory}" -w "${absolute_directory}" "make-in-docker/${prefix}:${mid_command}" "$@"
     fi
 }
 
@@ -233,8 +227,8 @@ fi
 
 absolute_directory="$(cd "$directory" && pwd;)"
 
-if [ -f "${absolute_directory}/mid-prefix" ]; then
-    prefix="${prefix:-$(cat "${absolute_directory}/mid-prefix")}"
+if [ -f "${absolute_directory}/.mid-prefix" ]; then
+    prefix="${prefix:-$(cat "${absolute_directory}/.mid-prefix")}"
 fi
 prefix="${prefix:-default}"
 

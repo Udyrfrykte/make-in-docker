@@ -17,9 +17,6 @@ _mid_run()
         --entrypoint)
           state='entrypoint'
           ;;
-        --mountpoint)
-          state='mountpoint'
-          ;;
         *)
           return
           ;;
@@ -33,9 +30,9 @@ _mid_run()
   case "$state" in
     zero)
       if [ -z "$cur" ]; then
-        COMPREPLY=( $(compgen -W "--help --entrypoint --mountpoint <ARGUMENTS>" -- $cur) )
+        COMPREPLY=( $(compgen -W "--help --entrypoint <ARGUMENTS>" -- $cur) )
       elif [ "${cur:0:1}" == '-' ]; then
-        COMPREPLY=( $(compgen -W "--help --entrypoint --mountpoint" -- $cur) )
+        COMPREPLY=( $(compgen -W "--help --entrypoint" -- $cur) )
       fi
       ;;
     entrypoint)
