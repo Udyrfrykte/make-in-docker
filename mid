@@ -144,13 +144,13 @@ function mid_build {
     done
 
     if [ -d "${absolute_directory}/${prefix}-make" ]; then
-        docker build --rm -t make-in-docker/${prefix}:make ${absolute_directory}/${prefix}-make
+        docker build --rm -t make-in-docker/${prefix}:make "${absolute_directory}/${prefix}-make"
     else
         echo "no make image directory (should be ${absolute_directory}/${prefix}-make)"
     fi
 
     if [ -d "${absolute_directory}/${prefix}-run" ]; then
-        docker build --rm -t make-in-docker/${prefix}:run ${absolute_directory}/${prefix}-run
+        docker build --rm -t make-in-docker/${prefix}:run "${absolute_directory}/${prefix}-run"
     else
         echo "no run image directory (should be ${absolute_directory}/${prefix}-run)"
     fi
@@ -172,10 +172,10 @@ function mid_export {
         shift
     done
 
-    rm -rf ${absolute_directory}/${prefix}-make-root
-    mkdir ${absolute_directory}/${prefix}-make-root
-    docker run --rm make-in-docker/${prefix}:make tar -C / -c usr/include | tar -x -C ${absolute_directory}/${prefix}-make-root
-    docker run --rm make-in-docker/${prefix}:make tar -C / -c usr/local/include | tar -x -C ${absolute_directory}/${prefix}-make-root
+    rm -rf "${absolute_directory}/${prefix}-make-root"
+    mkdir "${absolute_directory}/${prefix}-make-root"
+    docker run --rm make-in-docker/${prefix}:make tar -C / -c usr/include | tar -x -C "${absolute_directory}/${prefix}-make-root"
+    docker run --rm make-in-docker/${prefix}:make tar -C / -c usr/local/include | tar -x -C "${absolute_directory}/${prefix}-make-root"
 }
 
 
